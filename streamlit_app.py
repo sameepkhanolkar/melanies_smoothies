@@ -1,5 +1,6 @@
 # Import Python packages
 import streamlit as st
+import requests
 from snowflake.snowpark.functions import col
 
 import requests  
@@ -11,19 +12,20 @@ sf_df =st.dataframe(data=smoothiefroot_response.json(),use_container_width=true)
 st.title(":cup_with_straw: Customize Your Smoothie! :cup_with_straw:")
 st.write("Choose the fruits you want in your custom Smoothie!")
 
+# Get active Snowflake session
+cnx = st.connection("snowflake")
+session = cnx.session()
+
 # Customer name
 name_on_order = st.text_input("Name on Smoothie:")
 
 if name_on_order:
     st.write("The name on your Smoothie will be:", name_on_order)
 
-# Get active Snowflake session
-session = get_active_session()
-
 # Retrieve available fruits
 my_dataframe = (
     session
-    .table("smoothies.public.fruit_options")
+    .table("SMOOTHIES.PUBLIC.FRUIT_OPTIONS")
     .select(col("FRUIT_NAME"))
 )
 
@@ -36,13 +38,11 @@ fruit_options = [
 ingredients_list = st.multiselect(
     "Choose up to 5 ingredients:",
     fruit_options,
-    max_selections=6
+    max_selections=5
 )
 
-# Only show the button after ingredients are selected
 if ingredients_list:
 
-    # Join selected fruits without a trailing space
     ingredients_string = " ".join(ingredients_list)
 
     time_to_insert = st.button("Submit Order")
@@ -53,11 +53,12 @@ if ingredients_list:
             st.warning("Please enter a name for your Smoothie.")
 
         else:
+
             my_insert_stmt = f"""
-                INSERT INTO smoothies.public.orders
+                INSERT INTO SMOOTHIES.PUBLIC.ORDERS
                 (
-                    name_on_order,
-                    ingredients
+                    NAME_ON_ORDER,
+                    INGREDIENTS
                 )
                 VALUES
                 (
@@ -72,3 +73,17 @@ if ingredients_list:
                 f"Your Smoothie is ordered, {name_on_order}!",
                 icon="✅"
             )
+
+
+# New section to display smoothiefroot nutrition information
+
+smoothiefroot_response = requests.get(
+    "https://my.smoothiefroot.com/api/fruit/watermelon"
+)
+
+# st.text(smoothiefroot_response.json())
+
+sf_df = st.dataframe(
+    data=smoothiefroot_response.json(),
+    use_container_width=True
+)
